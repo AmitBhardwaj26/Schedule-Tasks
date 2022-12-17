@@ -2,6 +2,9 @@
 const path=require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
+const dotenv = require('dotenv'); 
+dotenv.config(); 
+
 // add the mongoose
 const mongoose=require("mongoose");
 // const date = require(__dirname + "/date.js");
@@ -20,7 +23,7 @@ app.use(express.static(static_path));
 // mongoose.connect("",{useNewUrlParser:true});
 
 const dbConnection = ()=> {
-try { mongoose.connect("mongodb+srv://admin-amit:amit@cluster0.apybtrv.mongodb.net/?retryWrites=true&w=majority",{
+try { mongoose.connect("process.env.MONGO_URL",{
 
   useNewUrlParser: true,
   // logicalSessionTimeoutMinutes: 15,
