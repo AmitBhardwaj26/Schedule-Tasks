@@ -23,7 +23,7 @@ app.use(express.static(static_path));
 // mongoose.connect("",{useNewUrlParser:true});
 
 const dbConnection = ()=> {
-try { mongoose.connect("process.env.MONGO_URL",{
+try { mongoose.connect(process.env.MONGO_URL,{
 
   useNewUrlParser: true,
   // logicalSessionTimeoutMinutes: 15,
