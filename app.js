@@ -24,7 +24,9 @@ app.use(express.static(static_path));
 
 // database connection
 const dbConnection = ()=> {
- try { mongoose.connect(process.env.MONGO_URL,{
+  try { mongoose.connect("mongodb+srv://admin-amit:Amitbhar3@cluster0.apybtrv.mongodb.net/",{
+
+//  try { mongoose.connect(process.env.MONGO_URL,{
    useNewUrlParser: true,
   // logicalSessionTimeoutMinutes: 15,
   //  useCreateIndex: true,
@@ -86,7 +88,7 @@ app.get("/", function(req, res)
     //    res.render("list", {listTitle:"Today", newListItems: founditems});
     //  });
     const customListName= _.capitalize("Today");
-    console.log(customListName);
+   
     if(List.length === 0)
     {      //create a new list
           const list=new List({
@@ -134,7 +136,8 @@ app.get("/:customListName",function(req,res)
 
 app.post("/", function(req, res){
 
-  const itemName = req.body.newItem;
+  const temp = req.body.newItem;
+  const itemName= temp.slice(0, 110 );
   const listName = req.body.list;
    const item=new Item({
     name: itemName
@@ -142,9 +145,9 @@ app.post("/", function(req, res){
    var count=0;
    for(var i=0;i<itemName.length;i++)
    {
-     if(itemName[i] === " ") count++;
+     if(itemName[i] != " ") {count=1; break;}
    }
-   if(count==itemName.length)  
+   if(count==0 )  
    {
      if(listName=="Today") res.redirect("/");
      else res.redirect("/" + listName);
