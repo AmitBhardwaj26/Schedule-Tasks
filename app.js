@@ -22,10 +22,10 @@ app.use(express.static(static_path));
 //connect with mongoose
 // mongoose.connect("",{useNewUrlParser:true});
 
+// database connection
 const dbConnection = ()=> {
-try { mongoose.connect(process.env.MONGO_URL,{
-
-  useNewUrlParser: true,
+ try { mongoose.connect(process.env.MONGO_URL,{
+   useNewUrlParser: true,
   // logicalSessionTimeoutMinutes: 15,
   //  useCreateIndex: true,
    useUnifiedTopology: true,
@@ -38,21 +38,24 @@ catch(err){
   console.log(err); };
 
 }
-
 dbConnection();
 
-// .then(()=>{
-//   console.log(`connectiob successful`);
-// }).catch((err)=> console.log(err));
-
-// creating schema's
+// schema
 const ItemSchema ={
   name: String
 };
+
+//schema for all the lists
+const ListSchema ={
+  name:  String,
+  items: [ItemSchema]
+};
+
 // model 
 const Item= mongoose.model("Item",ItemSchema);
-// const items = ["Buy Food", "Cook Food", "Eat Food"];
-// const workItems = [];
+const List=mongoose.model("List",ListSchema); //schema 2 for storing many lists
+
+
 
 const item1=new Item({
  name: "Welcome to your todolist"  
@@ -65,44 +68,52 @@ const item2=new Item({
  });  
   
  const defaultItems=[item1, item2 ,item3]; //array that can be inserted into database
- 
-  // Item.insertMany(defaultItems,(err)=>{
-  //      if(err) console.log(err);
-  //      else console.log("successfully inserted");
-  //   })
+
+
+
    
-   app.get("/", function(req, res) {
-   // const day = date.getDate();
-   
-     Item.find({}, function(err,founditems){
-       if(founditems.length === 0)
-       { 
-           Item.insertMany(defaultItems,(err)=>{
-             if(err) {console.log(err);}
-             else { console.log("successfully inserted");}
+app.get("/", function(req, res) 
+{
+  //  console.log("/ root");
+    //  Item.find({}, function(err,founditems){
+    //    if(founditems.length === 0)
+    //    { 
+    //        Item.insertMany(defaultItems,(err)=>{
+    //          if(err) {console.log(err);}
+    //          else { console.log("successfully inserted");}
+    //        });
+    //    }
+    //    res.render("list", {listTitle:"Today", newListItems: founditems});
+    //  });
+    const customListName= _.capitalize("Today");
+    console.log(customListName);
+    if(List.length === 0)
+    {      //create a new list
+          const list=new List({
+            name:customListName,
+            items: defaultItems
            });
-       }
-      
-       res.render("list", {listTitle:"Today", newListItems: founditems});
-     
-     });
-   
-   });
+           list.save();
+           res.redirect("/");
+    }
+    else
+    {
+         List.findOne({name:customListName},function(err,foundList){
+          if(foundList.items.length === 0) {foundList.items.push(defaultItems[0],defaultItems[1],defaultItems[2]); foundList.save();}
+          res.render("list", {listTitle:foundList.name , newListItems: foundList.items});
+         });
+    }
+    
+});
 
-const ListSchema ={
-  name:  String,
-  items: [ItemSchema]
-};
-const List=mongoose.model("List",ListSchema); //schema 2 for storing many lists
-
-
-
-app.get("/:customListName",function(req,res){
+app.get("/:customListName",function(req,res)
+{
   const customListName= _.capitalize( req.params.customListName);
   List.findOne({name:customListName},function(err,foundList){
     if(!err)
     {
-      if(!foundList){
+      if(!foundList)
+      {
         //create a new list
         const list=new List({
           name:customListName,
@@ -113,13 +124,12 @@ app.get("/:customListName",function(req,res){
       }
       else
       {
-        //show the list
+        //show an existing list
+        if(foundList.items.length === 0) { foundList.items.push(defaultItems[0],defaultItems[1],defaultItems[2]); foundList.save(); }
         res.render("list", {listTitle:foundList.name , newListItems: foundList.items});
       }
     }
-  }) 
-  
-  
+  })
 });
 
 app.post("/", function(req, res){
@@ -129,17 +139,28 @@ app.post("/", function(req, res){
    const item=new Item({
     name: itemName
    });
-   
-   if(listName === "Today"){
-        item.save();
-        res.redirect("/");
+   var count=0;
+   for(var i=0;i<itemName.length;i++)
+   {
+     if(itemName[i] === " ") count++;
+   }
+   if(count==itemName.length)  
+   {
+     if(listName=="Today") res.redirect("/");
+     else res.redirect("/" + listName);
+   }
+   else if(listName === "Today"){
+     List.findOne({name:listName},function(err, foundList){
+      foundList.items.push(item);
+      foundList.save();
+      res.redirect("/");
+     });
    } 
    else {
     List.findOne({name:listName},function(err, foundList){
       foundList.items.push(item);
       foundList.save();
       res.redirect("/" + listName);
-      // res.redirect("/" + listName);
     });
    }
 });
@@ -152,11 +173,18 @@ app.post("/delete",function(req,res){
 
   if(NameofList === "Today")
   {
-    Item.findByIdAndRemove({_id:CheckitemId},function(err){
-      if(err) console.log(err);
-      // else console.log("successfully deleted");
+
+    List.findOneAndUpdate({name: NameofList},{$pull:{items:{_id:CheckitemId}}},(err,foundList)=>{
+      if(!err){
+        res.redirect("/");
+      }
     });
-    res.redirect("/");
+
+    // Item.findByIdAndRemove({_id:CheckitemId},function(err){
+    //   if(err) console.log(err);
+    //   // else console.log("successfully deleted");
+    // });
+    // res.redirect("/");
   }
   else 
   {
@@ -170,10 +198,6 @@ app.post("/delete",function(req,res){
 
 });
 
-// app.get("/work", function(req,res){
-//   res.render("list", {listTitle: "Work List", newListItems: workItems});
-// });
-
 
 app.get("/about", function(req, res){
   res.render("about");
@@ -185,5 +209,5 @@ let port = process.env.PORT || 8010;
 
 
 app.listen(port, ()=> {
-  console.log("Server has started successfully");
+  console.log(`Server has started successfully at ${port}`);
 });
